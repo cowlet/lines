@@ -1,0 +1,8 @@
+[package]
+name = "lines"
+version = "0.1.0"
+authors = ["Victoria Catterson <vic@cowlet.org>"]
+
+[dependencies]
+csv = "0.14"
+rustc-serialize = "0.*"
