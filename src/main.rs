@@ -31,18 +31,17 @@ fn parse_file(file: &str) -> Result<Vec<Coord>, Box<Error>> {
 
     println!("rows: {:?}", rows);
 
-    //let mut coords = rows.map(|r| Coord { x: r.x, y: r.y });
+    let coords = rows.iter().map(|r| Coord { x: r.0, y: r.1 }).collect::<Vec<Coord>>();
 
-    //println!("coords is now {:?}", coords);
+    println!("coords is now {:?}", coords);
 
-    //coords
-    return Err(From::from("Chickens"));
+    Ok(coords)
 }
 
 
 fn main() {
 
-    let coords = parse_file("data.csv");
+    let coords = parse_file("data.csv").unwrap();
 
     // might not be 2 items
     let l = calc_line(&coords[0], &coords[1]);
