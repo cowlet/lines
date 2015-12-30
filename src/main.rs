@@ -4,7 +4,7 @@ extern crate csv;
 
 use std::fs;
 use std::error::Error;
-use la::*;
+use la::{Matrix, SVD};
 
 struct Line {
     m: f64,
@@ -101,66 +101,78 @@ fn main() {
     println!("The line has m = {} and c = {}", l.m, l.c);
 }
 
+#[cfg(test)]
+mod tests {
+    use super::calc_line;
+    use la::{Matrix, SVD};
 
-#[test]
-fn test_calc_line() {
-    let l = calc_line(1.0, 2.0, 5.0, 4.0);
+    macro_rules! assert_approx_eq(
+        ($left: expr, $right: expr, $tolerance: expr) => ({
+            let delta = ($left - $right).abs();
+            if delta > $tolerance {
+                panic!("assertion failed: `left ≈ right` (left: `{:?}`, right: `{:?}`, tolerance: `{:?}`)",
+                $left, $right, $tolerance)
+            }
+        })
+    );
 
-    assert_eq!(l.m, 0.5);
-    assert_eq!(l.c, 1.5);
+    #[test]
+    fn test_calc_line() {
+        let l = calc_line(1.0, 2.0, 5.0, 4.0);
+
+        assert_eq!(l.m, 0.5);
+        assert_eq!(l.c, 1.5);
+    }
+
+    #[test]
+    fn create_matrices() {
+        let mat = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
+        let mat1 = m!(1.0, 2.0, 3.0);
+        let mat2 = m!(1.0, 2.0; 3.0, 4.0);
+
+        println!("mat is {:?}", mat);
+        println!("mat1 is {:?}", mat1);
+        println!("mat2 is {:?}", mat2);
+
+        assert!(mat.rows() == 2);
+        assert!(mat.cols() == 2);
+        assert!(mat1.rows() == 1);
+        assert!(mat1.cols() == 3);
+        assert!(mat2.rows() == 2);
+        assert!(mat2.cols() == 2);
+    }
+
+    #[test]
+    fn test_svd() {
+        // Y = beta.X + e
+        // where Y is the N x 1 matrix of y values
+        // and X is the N x 2 matrix of x0 and x1 values
+        // x0 = 1 for all datapoints
+        // the expansion form is y = beta0 * x0 + beta1 * x1 + e
+        let xs = m!(1.0, 1.0; 1.0, 2.0; 1.0, 3.0);
+        let ys = m!(2.0; 4.0; 6.0);
+
+        let svd = SVD::new(&xs);
+        let u = svd.get_u();
+        let s = svd.get_s();
+        let v = svd.get_v();
+
+        assert!((u * s * v.t()).approx_eq(&xs));
+
+        // "divide each alpha_j by its corresponding s_j"
+        // But they are different dimensions, so manually divide each
+        // alpha_j by the diagnonal s_j
+        assert_eq!(u.t().cols(), ys.rows());
+        let alpha = u.t() * ys;
+
+        assert_eq!(alpha.rows(), s.rows());
+        let sinv_alpha = m!(alpha.get(0, 0) / s.get(0, 0); alpha.get(1, 0) / s.get(1, 1));
+        assert_eq!(sinv_alpha.rows(), 2);
+        assert_eq!(sinv_alpha.cols(), 1);
+
+        assert_eq!(v.cols(), sinv_alpha.rows());
+        let betas = v * sinv_alpha;
+        assert_approx_eq!(betas.get(0, 0), 0.0f64, 0.0001f64);
+        assert_approx_eq!(betas.get(1, 0), 2.0f64, 0.0001f64);
+    }
 }
-
-#[test]
-fn create_matrices() {
-    let mat = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
-    let mat1 = m!(1.0, 2.0, 3.0);
-    let mat2 = m!(1.0, 2.0; 3.0, 4.0);
-
-    println!("mat is {:?}", mat);
-    println!("mat1 is {:?}", mat1);
-    println!("mat2 is {:?}", mat2);
-
-    assert!(mat.rows() == 2);
-    assert!(mat.cols() == 2);
-    assert!(mat1.rows() == 1);
-    assert!(mat1.cols() == 3);
-    assert!(mat2.rows() == 2);
-    assert!(mat2.cols() == 2);
-}
-
-#[test]
-fn test_svd() {
-    // Y = beta.X + e
-    // where Y is the N x 1 matrix of y values
-    // and X is the N x 2 matrix of x0 and x1 values
-    // x0 = 1 for all datapoints
-    // the expansion form is y = beta0 * x0 + beta1 * x1 + e
-    let xs = m!(1.0, 1.0; 1.0, 2.0; 1.0, 3.0);
-    let ys = m!(2.0; 4.0; 6.0);
-
-    let svd = SVD::new(&xs);
-    let u = svd.get_u();
-    let s = svd.get_s();
-    let v = svd.get_v();
-
-    assert!((u * s * v.t()).approx_eq(&xs));
-
-    // "divide each alpha_j by its corresponding s_j"
-    // But they are different dimensions, so manually divide each
-    // alpha_j by the diagnonal s_j
-    assert_eq!(u.t().cols(), ys.rows());
-    let alpha = u.t() * ys;
-
-    assert_eq!(alpha.rows(), s.rows());
-    let sinv_alpha = m!(alpha.get(0, 0) / s.get(0, 0); alpha.get(1, 0) / s.get(1, 1));
-    assert_eq!(sinv_alpha.rows(), 2);
-    assert_eq!(sinv_alpha.cols(), 1);
-
-    assert_eq!(v.cols(), sinv_alpha.rows());
-    let betas = v * sinv_alpha;
-    let beta0_diff: f64 = betas.get(0, 0) - 0.0; // expecting 0
-    let beta1_diff: f64 = betas.get(1, 0) - 2.0; // expecting 2
-    assert!(beta0_diff.abs() < 0.0001);
-    assert!(beta1_diff.abs() < 0.0001);
-}
-
