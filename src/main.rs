@@ -36,6 +36,19 @@ fn parse_file(file: &str) -> Result<Matrix<f64>, Box<Error>> {
     Ok(Matrix::new(rows, cols, data))
 }
 
+fn generate_xs(data: &Matrix<f64>) -> Matrix<f64> {
+    // the last column is ys, but all others are xs
+    let high_xs = data.filter_columns(&|_, col| { col < (data.cols()-1) });
+    // add back in x^0, ie the first column should be all 1s
+    let mut xs = Vec::<f64>::new();
+    for r in 0..high_xs.rows() {
+        xs.push(1.0);
+        xs.extend(high_xs.get_rows(r).get_data());
+    }
+    let rows = data.rows();
+    let cols = data.cols(); // removed y col and added x^0 col
+    Matrix::new(rows, cols, xs)
+}
 
 fn main() {
 
@@ -49,7 +62,33 @@ fn main() {
             },
         };
 
+    // split off the last column as y values
+    let ys = data.get_columns(data.cols()-1);
+    // all others are coefficients of x
+    let xs = generate_xs(&data);
+
     println!("data is now {:?}", data);
+    println!("xs is {:?}", xs);
+    println!("ys is {:?}", ys);
+
+    let svd = SVD::new(&xs);
+
+    println!("SVD is u = {:?}, s = {:?}, v = {:?}", svd.get_u(), svd.get_s(), svd.get_v());
+
+    let u = svd.get_u();
+    // cut down s matrix to the expected number of rows given data cols
+    let s_hat = svd.get_s().filter_rows(&|_, row| { row < data.cols() });
+    println!("Subset s is {:?}", s_hat);
+    let v = svd.get_v();
+
+    // "divide each alpha_j by its corresponding s_j"
+    // But they are different dimensions, so manually divide each
+    // alpha_j by the diagnonal s_j
+    let alpha = u.t() * ys;
+    let sinv_alpha = m!(alpha.get(0, 0) / s_hat.get(0, 0); alpha.get(1, 0) / s_hat.get(1, 1));
+    let betas = v * sinv_alpha;
+
+    println!("betas are {:?}", betas);
 
     let x1 = data.get(0, 0);
     let y1 = data.get(0, 1);
@@ -89,4 +128,39 @@ fn create_matrices() {
     assert!(mat2.cols() == 2);
 }
 
+#[test]
+fn test_svd() {
+    // Y = beta.X + e
+    // where Y is the N x 1 matrix of y values
+    // and X is the N x 2 matrix of x0 and x1 values
+    // x0 = 1 for all datapoints
+    // the expansion form is y = beta0 * x0 + beta1 * x1 + e
+    let xs = m!(1.0, 1.0; 1.0, 2.0; 1.0, 3.0);
+    let ys = m!(2.0; 4.0; 6.0);
+
+    let svd = SVD::new(&xs);
+    let u = svd.get_u();
+    let s = svd.get_s();
+    let v = svd.get_v();
+
+    assert!((u * s * v.t()).approx_eq(&xs));
+
+    // "divide each alpha_j by its corresponding s_j"
+    // But they are different dimensions, so manually divide each
+    // alpha_j by the diagnonal s_j
+    assert_eq!(u.t().cols(), ys.rows());
+    let alpha = u.t() * ys;
+
+    assert_eq!(alpha.rows(), s.rows());
+    let sinv_alpha = m!(alpha.get(0, 0) / s.get(0, 0); alpha.get(1, 0) / s.get(1, 1));
+    assert_eq!(sinv_alpha.rows(), 2);
+    assert_eq!(sinv_alpha.cols(), 1);
+
+    assert_eq!(v.cols(), sinv_alpha.rows());
+    let betas = v * sinv_alpha;
+    let beta0_diff: f64 = betas.get(0, 0) - 0.0; // expecting 0
+    let beta1_diff: f64 = betas.get(1, 0) - 2.0; // expecting 2
+    assert!(beta0_diff.abs() < 0.0001);
+    assert!(beta1_diff.abs() < 0.0001);
+}
 
