@@ -99,12 +99,78 @@ fn main() {
     let l = calc_line(x1, y1, x2, y2);
 
     println!("The line has m = {} and c = {}", l.m, l.c);
+
+
+    println!("Testing matrix manipulations!");
+    let mat = m!(1, 2, 3; 4, 5, 6; 7, 8, 9);
+    let indices = [1, 2];
+    println!("{:?}", mat.get_rows(&indices[..]));
+
 }
 
 #[cfg(test)]
 mod tests {
     use super::calc_line;
     use la::{Matrix, SVD};
+
+    pub struct MatrixRowIterator<'a, T: 'a> {
+        index: usize,
+        matrix: &'a Matrix<T>
+    }
+
+    impl<'a, T: Copy> Iterator for MatrixRowIterator<'a, T> {
+        type Item = Matrix<T>;
+
+        fn next(&mut self) -> Option<Matrix<T>> {
+            if self.index < self.matrix.rows() {
+                let row = self.matrix.get_rows(self.index);
+                self.index += 1;
+                Some(row)
+            } else {
+                None
+            }
+        }
+    }
+
+    pub struct MatrixColIterator<'a, T: 'a> {
+        index: usize,
+        matrix: &'a Matrix<T>
+    }
+
+    impl<'a, T: Copy> Iterator for MatrixColIterator<'a, T> {
+        type Item = Matrix<T>;
+
+        fn next(&mut self) -> Option<Matrix<T>> {
+            if self.index < self.matrix.cols() {
+                let col = self.matrix.get_columns(self.index);
+                self.index += 1;
+                Some(col)
+            } else {
+                None
+            }
+        }
+    }
+
+    trait IterableMatrix<T> {
+        fn row_iter(&self) -> MatrixRowIterator<T>;
+        fn col_iter(&self) -> MatrixColIterator<T>;
+    }
+
+    impl<T: Copy> IterableMatrix<T> for Matrix<T> {
+        fn row_iter(&self) -> MatrixRowIterator<T> {
+            MatrixRowIterator::<T> {
+                index: 0,
+                matrix: self
+            }
+        }
+
+        fn col_iter(&self) -> MatrixColIterator<T> {
+            MatrixColIterator::<T> {
+                index: 0,
+                matrix: self
+            }
+        }
+    }
 
     macro_rules! assert_approx_eq(
         ($left: expr, $right: expr, $tolerance: expr) => ({
@@ -174,5 +240,35 @@ mod tests {
         let betas = v * sinv_alpha;
         assert_approx_eq!(betas.get(0, 0), 0.0f64, 0.0001f64);
         assert_approx_eq!(betas.get(1, 0), 2.0f64, 0.0001f64);
+    }
+
+    #[test]
+    fn test_row_iter() {
+        let mat = m!(1, 2; 3, 4; 5, 6);
+
+        let mut iter = mat.row_iter();
+
+        let row1 = iter.next();
+        assert_eq!(row1, Some(m![1, 2]));
+        let row2 = iter.next();
+        assert_eq!(row2, Some(m![3, 4]));
+        let row3 = iter.next();
+        assert_eq!(row3, Some(m![5, 6]));
+
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_col_iter() {
+        let mat = m!(1, 2; 3, 4; 5, 6);
+
+        let mut iter = mat.col_iter();
+
+        let col1 = iter.next();
+        assert_eq!(col1, Some(m![1; 3; 5])); // column format
+        let col2 = iter.next();
+        assert_eq!(col2, Some(m![2; 4; 6]));
+
+        assert_eq!(iter.next(), None);
     }
 }
