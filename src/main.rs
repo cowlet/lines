@@ -40,14 +40,8 @@ fn generate_xs(data: &Matrix<f64>) -> Matrix<f64> {
     // the last column is ys, but all others are xs
     let high_xs = data.filter_columns(&|_, col| { col < (data.cols()-1) });
     // add back in x^0, ie the first column should be all 1s
-    let mut xs = Vec::<f64>::new();
-    for r in 0..high_xs.rows() {
-        xs.push(1.0);
-        xs.extend(high_xs.get_rows(r).get_data());
-    }
-    let rows = data.rows();
-    let cols = data.cols(); // removed y col and added x^0 col
-    Matrix::new(rows, cols, xs)
+    let ones = Matrix::<f64>::one_vector(high_xs.rows());
+    ones.cr(&high_xs)
 }
 
 fn main() {
@@ -175,9 +169,11 @@ mod tests {
 
     trait ConcatableMatrix<T> {
         fn row_concat(&self, other: Matrix<T>) -> Matrix<T>;
+        fn col_concat(&self, other: Matrix<T>) -> Matrix<T>;
     }
 
     impl<T: Copy> ConcatableMatrix<T> for Matrix<T> {
+        // cb() in library
         fn row_concat(&self, other: Matrix<T>) -> Matrix<T> {
             assert!(self.cols() == other.cols());
             let mut data = vec![];
@@ -185,6 +181,18 @@ mod tests {
             data.extend(other.get_data());
             let no_rows = self.rows() + other.rows();
             Matrix::new(no_rows, self.cols(), data)
+        }
+
+        // cr() in library
+        fn col_concat(&self, other: Matrix<T>) -> Matrix<T> {
+            assert!(self.rows() == other.rows());
+            let mut data = vec![];
+            for i in 0..self.rows() {
+                data.extend(self.get_rows(i).get_data());
+                data.extend(other.get_rows(i).get_data());
+            }
+            let no_cols = self.cols() + other.cols();
+            Matrix::new(self.rows(), no_cols, data)
         }
     }
 
@@ -304,5 +312,23 @@ mod tests {
         let mat2 = m!(7, 8; 9, 10);
 
         let _ = mat1.row_concat(mat2);
+    }
+
+    #[test]
+    fn test_col_concat() {
+        let mat1 = m!(1, 2; 3, 4);
+        let mat2 = m!(5, 6; 7, 8);
+
+        let mat3 = mat1.col_concat(mat2);
+        assert_eq!(mat3, m!(1, 2, 5, 6; 3, 4, 7, 8));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_col_concat_wrong_dimensions() {
+        let mat1 = m!(1, 2; 3, 4; 5, 6);
+        let mat2 = m!(7, 8; 9, 10);
+
+        let _ = mat1.col_concat(mat2);
     }
 }
