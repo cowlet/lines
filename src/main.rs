@@ -172,6 +172,22 @@ mod tests {
         }
     }
 
+
+    trait ConcatableMatrix<T> {
+        fn row_concat(&self, other: Matrix<T>) -> Matrix<T>;
+    }
+
+    impl<T: Copy> ConcatableMatrix<T> for Matrix<T> {
+        fn row_concat(&self, other: Matrix<T>) -> Matrix<T> {
+            assert!(self.cols() == other.cols());
+            let mut data = vec![];
+            data.extend(self.get_data());
+            data.extend(other.get_data());
+            let no_rows = self.rows() + other.rows();
+            Matrix::new(no_rows, self.cols(), data)
+        }
+    }
+
     macro_rules! assert_approx_eq(
         ($left: expr, $right: expr, $tolerance: expr) => ({
             let delta = ($left - $right).abs();
@@ -270,5 +286,23 @@ mod tests {
         assert_eq!(col2, Some(m![2; 4; 6]));
 
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_row_concat() {
+        let mat1 = m!(1, 2; 3, 4);
+        let mat2 = m!(5, 6; 7, 8);
+
+        let mat3 = mat1.row_concat(mat2);
+        assert_eq!(mat3, m!(1, 2; 3, 4; 5, 6; 7, 8));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_row_concat_wrong_dimensions() {
+        let mat1 = m!(1, 2, 3; 4, 5, 6);
+        let mat2 = m!(7, 8; 9, 10);
+
+        let _ = mat1.row_concat(mat2);
     }
 }
