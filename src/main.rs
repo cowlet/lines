@@ -87,6 +87,8 @@ fn main() {
     let betas = linear_regression(&xs, &ys);
     println!("betas is {:?}", betas);
 
+    let line = { |x: f64| betas.get(1, 0) * x + betas.get(0, 0) };
+
     let x1 = data.get(0, 0);
     let y1 = data.get(0, 1);
 
@@ -98,13 +100,20 @@ fn main() {
     println!("The line has m = {} and c = {}", l.m, l.c);
 
     // gnuplot
-    let x_pts = &[1.0, 2.0, 3.0, 4.0, 5.0];
-    let y_pts = &[2.0, 4.0, 6.0, 8.0, 10.0];
+    let min_x = 0.0;
+    let max_x = data.get_columns(0).get_data().iter().fold(0.0f64, |pmax, x| x.max(pmax) ) + 1.0;
+    let min_y = line(min_x);
+    let max_y = line(max_x);
+
     let mut fig = Figure::new();
-    fig.axes2d().lines(x_pts, y_pts, &[Caption("Bok curve"), LineWidth(1.5)])
+    fig.axes2d().points(data.get_columns(0).get_data(), 
+                        ys.get_data(), 
+                        &[Caption("Datapoints"), LineWidth(1.5)])
         .set_x_range(AutoOption::Fix(0.0), AutoOption::Auto)
-        .set_x_label("Chickens", &[])
-        .set_y_label("Boks", &[]);
+        .set_y_range(AutoOption::Fix(0.0), AutoOption::Auto)
+        .set_x_label("x", &[])
+        .set_y_label("y", &[])
+        .lines(vec![min_x, max_x], vec![min_y, max_y], &[]);
     fig.show();
 
 }
