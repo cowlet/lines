@@ -1,10 +1,12 @@
 extern crate rustc_serialize;
 extern crate csv;
 #[macro_use] extern crate la;
+extern crate gnuplot;
 
 use std::fs;
 use std::error::Error;
 use la::{Matrix, SVD};
+use gnuplot::{Figure, AxesCommon, Caption, LineWidth, AutoOption};
 
 struct Line {
     m: f64,
@@ -95,6 +97,15 @@ fn main() {
 
     println!("The line has m = {} and c = {}", l.m, l.c);
 
+    // gnuplot
+    let x_pts = &[1.0, 2.0, 3.0, 4.0, 5.0];
+    let y_pts = &[2.0, 4.0, 6.0, 8.0, 10.0];
+    let mut fig = Figure::new();
+    fig.axes2d().lines(x_pts, y_pts, &[Caption("Bok curve"), LineWidth(1.5)])
+        .set_x_range(AutoOption::Fix(0.0), AutoOption::Auto)
+        .set_x_label("Chickens", &[])
+        .set_y_label("Boks", &[]);
+    fig.show();
 
 }
 
