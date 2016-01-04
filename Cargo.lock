@@ -3,7 +3,7 @@ name = "lines"
 version = "0.1.0"
 dependencies = [
  "csv 0.14.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "la 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "la 0.2.0 (git+https://github.com/xasmx/rust-la?rev=b475844)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -33,7 +33,7 @@ dependencies = [
 [[package]]
 name = "la"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/xasmx/rust-la?rev=b475844#b4758445360cbaf7d8a8447a8687d3649bfff30a"
 dependencies = [
  "num 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)",

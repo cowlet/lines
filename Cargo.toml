@@ -6,4 +6,4 @@ authors = ["Victoria Catterson <vic@cowlet.org>"]
 [dependencies]
 csv = "0.14"
 rustc-serialize = "0.*"
-la = "0.2.*"
+la = { git = "https://github.com/xasmx/rust-la", rev = "b475844" }

@@ -107,66 +107,6 @@ mod tests {
     use super::calc_line;
     use la::{Matrix, SVD};
 
-    pub struct MatrixRowIterator<'a, T: 'a> {
-        index: usize,
-        matrix: &'a Matrix<T>
-    }
-
-    impl<'a, T: Copy> Iterator for MatrixRowIterator<'a, T> {
-        type Item = Matrix<T>;
-
-        fn next(&mut self) -> Option<Matrix<T>> {
-            if self.index < self.matrix.rows() {
-                let row = self.matrix.get_rows(self.index);
-                self.index += 1;
-                Some(row)
-            } else {
-                None
-            }
-        }
-    }
-
-    pub struct MatrixColIterator<'a, T: 'a> {
-        index: usize,
-        matrix: &'a Matrix<T>
-    }
-
-    impl<'a, T: Copy> Iterator for MatrixColIterator<'a, T> {
-        type Item = Matrix<T>;
-
-        fn next(&mut self) -> Option<Matrix<T>> {
-            if self.index < self.matrix.cols() {
-                let col = self.matrix.get_columns(self.index);
-                self.index += 1;
-                Some(col)
-            } else {
-                None
-            }
-        }
-    }
-
-    trait IterableMatrix<T> {
-        fn row_iter(&self) -> MatrixRowIterator<T>;
-        fn col_iter(&self) -> MatrixColIterator<T>;
-    }
-
-    impl<T: Copy> IterableMatrix<T> for Matrix<T> {
-        fn row_iter(&self) -> MatrixRowIterator<T> {
-            MatrixRowIterator::<T> {
-                index: 0,
-                matrix: self
-            }
-        }
-
-        fn col_iter(&self) -> MatrixColIterator<T> {
-            MatrixColIterator::<T> {
-                index: 0,
-                matrix: self
-            }
-        }
-    }
-
-
     trait ConcatableMatrix<T> {
         fn row_concat(&self, other: Matrix<T>) -> Matrix<T>;
         fn col_concat(&self, other: Matrix<T>) -> Matrix<T>;
