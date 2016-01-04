@@ -4,6 +4,7 @@ extern crate csv;
 extern crate gnuplot;
 
 use std::fs;
+use std::env;
 use std::error::Error;
 use la::{Matrix, SVD};
 use gnuplot::{Figure, AxesCommon, Caption, LineWidth, AutoOption};
@@ -52,8 +53,8 @@ fn linear_regression(xs: &Matrix<f64>, ys: &Matrix<f64>) -> Matrix<f64> {
 }
 
 fn main() {
-
-    let filename = "data2.csv";
+    let args: Vec<String> = env::args().collect();
+    let filename = &args[1];
 
     let data = match parse_file(filename) {
             Ok(data) => data,
