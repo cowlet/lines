@@ -27,51 +27,61 @@ fn parse_file(file: &str) -> Result<Matrix<f64>, Box<Error>> {
     Ok(Matrix::new(rows, cols, data))
 }
 
-fn generate_xs(data: &Matrix<f64>) -> Matrix<f64> {
-    // the last column is ys, but all others are xs
-    let high_xs = data.filter_columns(&|_, col| { col < (data.cols()-1) });
-    // add back in x^0, ie the first column should be all 1s
-    let ones = Matrix::<f64>::one_vector(high_xs.rows());
-    ones.cr(&high_xs)
+fn generate_x_matrix(xs: &Matrix<f64>, order: usize) -> Matrix<f64> {
+    let gen_row = {|x: &f64| (0..(order+1)).map(|i| x.powi(i as i32)).collect::<Vec<_>>() };
+    let mdata = xs.get_data().iter().fold(vec![], |mut v, x| {v.extend(gen_row(x)); v} );
+    Matrix::new(xs.rows(), order+1, mdata)
 }
 
 fn linear_regression(xs: &Matrix<f64>, ys: &Matrix<f64>) -> Matrix<f64> {
     let svd = SVD::new(&xs);
+    let order = xs.cols()-1;
 
     let u = svd.get_u();
-    // cut down s matrix to the expected number of rows given xs cols (one coefficient per x)
-    let s_hat = svd.get_s().filter_rows(&|_, row| { row < xs.cols() });
+    // cut down s matrix to the expected number of rows given order (one coefficient per x)
+    let s_hat = svd.get_s().filter_rows(&|_, row| { row <= order });
     let v = svd.get_v();
 
     let alpha = u.t() * ys;
     // "divide each alpha_j by its corresponding s_j"
     // But they are different dimensions, so manually divide each
     // alpha_j by the diagnonal s_j
-    let sinv_alpha = m!(alpha.get(0, 0) / s_hat.get(0, 0); alpha.get(1, 0) / s_hat.get(1, 1));
+    let mut mdata = vec![];
+    for i in 0..(order+1) {
+        mdata.push(alpha.get(i, 0) / s_hat.get(i, i));
+    }
+    let sinv_alpha = Matrix::new(order+1, 1, mdata);
 
     v * sinv_alpha
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        println!("Expected an argument for data filename, found {}", args.len()-1);
+    if args.len() != 3 {
+        println!("Expected two arguments: one for data filename and one for polynomial order; found {}", args.len()-1);
         std::process::exit(1);
     }
     let filename = &args[1];
+    let order = match args[2].parse::<usize>() {
+        Ok(ord) => ord,
+        Err(err) => {
+            println!("Expected second argument to be an integer; found {} ({})", args[2], err);
+            std::process::exit(1)
+        }
+    };
 
     let data = match parse_file(filename) {
-            Ok(data) => data,
-            Err(err)  => {
-                println!("Problem reading file {}: {}", filename, err.to_string());
-                std::process::exit(1)
-            },
-        };
+        Ok(data) => data,
+        Err(err) => {
+            println!("Problem reading file {}: {}", filename, err.to_string());
+            std::process::exit(1)
+        }
+    };
 
     // split off the last column as y values
     let ys = data.get_columns(data.cols()-1);
-    // all others are coefficients of x
-    let xs = generate_xs(&data);
+    // and the first column is the values of x, which need to be expanded to matrix form
+    let xs = generate_x_matrix(&data.get_columns(0), order);
 
     println!("data is now {:?}", data);
     println!("xs is {:?}", xs);
@@ -80,9 +90,10 @@ fn main() {
     let betas = linear_regression(&xs, &ys);
     println!("betas is {:?}", betas);
 
-    let line = { |x: f64| betas.get(1, 0) * x + betas.get(0, 0) };
+    let line = { |x: f64| (0..(order+1)).fold(0.0, |sum, i| sum + betas.get(i, 0) * x.powi(i as i32))};
 
     // gnuplot
+    // TODO: take smaller steps
     let min_x = 0.0;
     let max_x = data.get_columns(0).get_data().iter().fold(0.0f64, |pmax, x| x.max(pmax) ) + 1.0;
     let min_y = line(min_x);
