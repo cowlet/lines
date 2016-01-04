@@ -44,6 +44,23 @@ fn generate_xs(data: &Matrix<f64>) -> Matrix<f64> {
     ones.cr(&high_xs)
 }
 
+fn linear_regression(xs: &Matrix<f64>, ys: &Matrix<f64>) -> Matrix<f64> {
+    let svd = SVD::new(&xs);
+
+    let u = svd.get_u();
+    // cut down s matrix to the expected number of rows given xs cols (one coefficient per x)
+    let s_hat = svd.get_s().filter_rows(&|_, row| { row < xs.cols() });
+    let v = svd.get_v();
+
+    let alpha = u.t() * ys;
+    // "divide each alpha_j by its corresponding s_j"
+    // But they are different dimensions, so manually divide each
+    // alpha_j by the diagnonal s_j
+    let sinv_alpha = m!(alpha.get(0, 0) / s_hat.get(0, 0); alpha.get(1, 0) / s_hat.get(1, 1));
+
+    v * sinv_alpha
+}
+
 fn main() {
 
     let filename = "data.csv";
@@ -65,24 +82,8 @@ fn main() {
     println!("xs is {:?}", xs);
     println!("ys is {:?}", ys);
 
-    let svd = SVD::new(&xs);
-
-    println!("SVD is u = {:?}, s = {:?}, v = {:?}", svd.get_u(), svd.get_s(), svd.get_v());
-
-    let u = svd.get_u();
-    // cut down s matrix to the expected number of rows given data cols
-    let s_hat = svd.get_s().filter_rows(&|_, row| { row < data.cols() });
-    println!("Subset s is {:?}", s_hat);
-    let v = svd.get_v();
-
-    // "divide each alpha_j by its corresponding s_j"
-    // But they are different dimensions, so manually divide each
-    // alpha_j by the diagnonal s_j
-    let alpha = u.t() * ys;
-    let sinv_alpha = m!(alpha.get(0, 0) / s_hat.get(0, 0); alpha.get(1, 0) / s_hat.get(1, 1));
-    let betas = v * sinv_alpha;
-
-    println!("betas are {:?}", betas);
+    let betas = linear_regression(&xs, &ys);
+    println!("betas is {:?}", betas);
 
     let x1 = data.get(0, 0);
     let y1 = data.get(0, 1);
@@ -94,11 +95,6 @@ fn main() {
 
     println!("The line has m = {} and c = {}", l.m, l.c);
 
-
-    println!("Testing matrix manipulations!");
-    let mat = m!(1, 2, 3; 4, 5, 6; 7, 8, 9);
-    let indices = [1, 2];
-    println!("{:?}", mat.get_rows(&indices[..]));
 
 }
 
@@ -204,6 +200,13 @@ mod tests {
         let betas = v * sinv_alpha;
         assert_approx_eq!(betas.get(0, 0), 0.0f64, 0.0001f64);
         assert_approx_eq!(betas.get(1, 0), 2.0f64, 0.0001f64);
+    }
+
+    #[test]
+    fn test_get_rows() {
+        let mat = m!(1, 2, 3; 4, 5, 6; 7, 8, 9);
+        let indices = [1, 2];
+        assert_eq!(mat.get_rows(&indices[..]), m![4, 5, 6; 7, 8, 9]);
     }
 
     #[test]
