@@ -8,18 +8,6 @@ use std::error::Error;
 use la::{Matrix, SVD};
 use gnuplot::{Figure, AxesCommon, Caption, LineWidth, AutoOption};
 
-struct Line {
-    m: f64,
-    c: f64,
-}
-
-fn calc_line(x1: f64, y1: f64, x2: f64, y2: f64) -> Line {
-    let m = (y1 - y2) / (x1 - x2);
-    let c = y1 - m * x1;
-
-    Line { m: m, c: c }
-}
-
 fn parse_file(file: &str) -> Result<Matrix<f64>, Box<Error>> {
     let file = try!(fs::File::open(file));
     let mut reader = csv::Reader::from_reader(file).has_headers(false);
@@ -65,7 +53,7 @@ fn linear_regression(xs: &Matrix<f64>, ys: &Matrix<f64>) -> Matrix<f64> {
 
 fn main() {
 
-    let filename = "data.csv";
+    let filename = "data2.csv";
 
     let data = match parse_file(filename) {
             Ok(data) => data,
@@ -89,16 +77,6 @@ fn main() {
 
     let line = { |x: f64| betas.get(1, 0) * x + betas.get(0, 0) };
 
-    let x1 = data.get(0, 0);
-    let y1 = data.get(0, 1);
-
-    let x2 = data.get(1, 0);
-    let y2 = data.get(1, 1);
-
-    let l = calc_line(x1, y1, x2, y2);
-
-    println!("The line has m = {} and c = {}", l.m, l.c);
-
     // gnuplot
     let min_x = 0.0;
     let max_x = data.get_columns(0).get_data().iter().fold(0.0f64, |pmax, x| x.max(pmax) ) + 1.0;
@@ -113,14 +91,13 @@ fn main() {
         .set_y_range(AutoOption::Fix(0.0), AutoOption::Auto)
         .set_x_label("x", &[])
         .set_y_label("y", &[])
-        .lines(vec![min_x, max_x], vec![min_y, max_y], &[]);
+        .lines(vec![min_x, max_x], vec![min_y, max_y], &[Caption("Regression")]);
     fig.show();
 
 }
 
 #[cfg(test)]
 mod tests {
-    use super::calc_line;
     use la::{Matrix, SVD};
 
     trait ConcatableMatrix<T> {
@@ -161,14 +138,6 @@ mod tests {
             }
         })
     );
-
-    #[test]
-    fn test_calc_line() {
-        let l = calc_line(1.0, 2.0, 5.0, 4.0);
-
-        assert_eq!(l.m, 0.5);
-        assert_eq!(l.c, 1.5);
-    }
 
     #[test]
     fn create_matrices() {
