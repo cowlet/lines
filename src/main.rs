@@ -54,6 +54,10 @@ fn linear_regression(xs: &Matrix<f64>, ys: &Matrix<f64>) -> Matrix<f64> {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        println!("Expected an argument for data filename, found {}", args.len()-1);
+        std::process::exit(1);
+    }
     let filename = &args[1];
 
     let data = match parse_file(filename) {
