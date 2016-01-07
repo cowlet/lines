@@ -93,11 +93,17 @@ fn main() {
     let line = { |x: f64| (0..(order+1)).fold(0.0, |sum, i| sum + betas.get(i, 0) * x.powi(i as i32))};
 
     // gnuplot
-    // TODO: take smaller steps
-    let min_x = 0.0;
     let max_x = data.get_columns(0).get_data().iter().fold(0.0f64, |pmax, x| x.max(pmax) ) + 1.0;
-    let min_y = line(min_x);
-    let max_y = line(max_x);
+
+    // make a vector between 0 and max_x in steps of 0.1
+    // overruns max_x to the next integer
+    let mut x_steps = vec![];
+    for i in 0..(max_x as usize) {
+        for j in 0..10 {
+            x_steps.push((i as f64) + 0.1 * (j as f64));
+        }
+    }
+    let y_steps = x_steps.iter().map(|x| line(*x) ).collect::<Vec<_>>();
 
     let mut fig = Figure::new();
     fig.axes2d().points(data.get_columns(0).get_data(), 
@@ -107,7 +113,7 @@ fn main() {
         .set_y_range(AutoOption::Fix(0.0), AutoOption::Auto)
         .set_x_label("x", &[])
         .set_y_label("y", &[])
-        .lines(vec![min_x, max_x], vec![min_y, max_y], &[Caption("Regression")]);
+        .lines(x_steps, y_steps, &[Caption("Regression")]);
     fig.show();
 
 }
