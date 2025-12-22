@@ -6,3 +6,4 @@ Perform polynomial regression in Rust and plot the output. Input data should be 
 * Example: `cargo run data2.csv 2` for a 2nd order polynomial fit
 * Run the tests with `cargo test`
 
+Permanently moved to https://codeberg.org/cowlet/lines
